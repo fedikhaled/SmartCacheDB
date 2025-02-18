@@ -1,4 +1,4 @@
-# 🚀 SmartCacheDB - AI-Powered Adaptive Caching for Node.js  
+# 🚀 SmartCacheDB - High-Performance Adaptive Caching for Node.js  
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)  
 **SmartCacheDB** is an AI-powered caching system for Node.js that **dynamically optimizes cache expiration** based on access patterns.  
 It supports **in-memory storage (LRU)** and **Redis**, reducing database load and improving performance.  
@@ -6,7 +6,7 @@ It supports **in-memory storage (LRU)** and **Redis**, reducing database load an
 ---
 
 ## 📌 **Features**
-✅ **AI-Optimized Cache Expiration** - No need to manually set TTL!  
+✅ **Optimized Cache Expiration** - No need to manually set TTL!  
 ✅ **Supports Redis & In-Memory** - Easily switch between storage types.  
 ✅ **Auto-Invalidation** - Cache updates automatically when data changes.  
 ✅ **LRU Cache Support** - Uses Least Recently Used (LRU) caching.  
