@@ -15,10 +15,13 @@ It supports **in-memory storage (LRU)** and **Redis**, reducing database load an
 ✅ **Persistent Storage Support** - Keep cache even after server restarts.  
 ✅ **Compression Support** - Reduce memory usage with Gzip compression.  
 ✅ **Multi-Backend Support** - Use multiple storage backends together (e.g., Memory + Redis).  
+✅ **Hybrid Caching** - Combine different cache strategies dynamically.  
+✅ **Efficient Testing Suite** - Ensures reliability with Jest tests.  
 
 ---
 
 ## 📦 **Installation**
+### **1️⃣ Installing SmartCacheDB**
 Install the package using `npm`:
 ```sh
 npm install smartcachedb
@@ -26,6 +29,41 @@ npm install smartcachedb
 or using `yarn`:
 ```sh
 yarn add smartcachedb
+```
+
+### **2️⃣ Installing Redis (Required for Redis Mode)**
+#### **🔹 Windows**
+If you're using Windows, install Redis via **WSL (Windows Subsystem for Linux)**:
+```sh
+wsl --install
+sudo apt update
+sudo apt install redis-server
+sudo service redis-server start
+```
+Check if Redis is running:
+```sh
+redis-cli ping
+```
+
+#### **🔹 Linux (Ubuntu/Debian)**
+```sh
+sudo apt update
+sudo apt install redis-server -y
+sudo systemctl start redis
+sudo systemctl enable redis
+redis-cli ping
+```
+
+#### **🔹 macOS**
+```sh
+brew install redis
+brew services start redis
+redis-cli ping
+```
+
+#### **🔹 Docker (Cross-Platform Solution)**
+```sh
+docker run --name redis -d -p 6379:6379 redis
 ```
 
 ---
@@ -70,6 +108,20 @@ console.log(product); // { name: "Laptop", price: 1200 }
 
 ---
 
+### **3️⃣ Hybrid Caching (Memory + Redis)**
+```typescript
+const cache = new SmartCacheDB(['memory', 'redis'], { redisConfig: { host: 'localhost', port: 6379 } });
+
+// Store data in hybrid mode
+await cache.set('session:456', { token: "abcd1234" });
+
+// Retrieve from cache
+const session = await cache.get('session:456');
+console.log(session);
+```
+
+---
+
 ## **🛠️ API Methods**
 | Method | Description |
 |--------|------------|
@@ -88,9 +140,14 @@ npm test
 Expected output:
 ```
 PASS  src/tests/cache.test.ts
-✓ should store and retrieve a value
-✓ should delete a value
-✓ should clear all values
+✓ should store and retrieve a value in memory (9 ms)
+✓ should store and retrieve a value in Redis
+✓ should delete a value from cache (11 ms)
+✓ should clear all values from cache (3 ms)
+✓ should handle non-existing keys gracefully (2 ms)
+✓ should handle setting objects in cache (1 ms)
+✓ should store and retrieve compressed values
+✓ should store values with expiration (2007 ms)
 ```
 
 ---
