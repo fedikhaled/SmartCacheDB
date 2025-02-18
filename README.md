@@ -108,8 +108,8 @@ Contributions are welcome! To contribute:
 
 ## 📞 **Contact**
 For questions or feature requests, feel free to reach out:
-- **GitHub Issues:** [Open an issue](https://github.com/YOUR_GITHUB_USERNAME/SmartCacheDB/issues)
-- **Email:** your.email@example.com
+- **GitHub Issues:** [Open an issue](https://github.com/fedikhaled/SmartCacheDB/issues)
+- **Email:** fedikhaled01@gmail.com**
 
 ---
 
