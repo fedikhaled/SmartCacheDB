@@ -1,57 +1,55 @@
-import { LRUCache } from 'lru-cache';
-import { createClient, RedisClientType } from 'redis';
-import CacheOptimizer from './optimizer';
+import { MemoryStorage } from './storage/memory';
+import { RedisStorage } from './storage/redis';
+import { DatabaseStorage } from './storage/database';
+import { compress, decompress } from './compression';
+import { setupWebSocket, broadcastInvalidation } from './websocket';
+import { CacheMonitor } from './monitoring';
 
 class SmartCacheDB {
-    private cache: LRUCache<string, any>;
-    private redisClient?: RedisClientType;
-    private optimizer: CacheOptimizer;
+    private memoryStorage: MemoryStorage;
+    private redisStorage: RedisStorage;
+    private databaseStorage: DatabaseStorage;
+    private wsServer: any;
+    private monitor: CacheMonitor;
 
-    constructor(storage: 'memory' | 'redis' = 'memory', redisConfig?: any) {
-        this.cache = new LRUCache({ max: 100 });
-        this.optimizer = new CacheOptimizer();
-
-        if (storage === 'redis') {
-            this.redisClient = createClient(redisConfig);
-            this.redisClient.connect().catch(console.error);
-        }
+    constructor(storageType: string[] = ['memory', 'redis'], redisConfig = {}, dbConfig = {}) {
+        this.memoryStorage = new MemoryStorage();
+        this.redisStorage = new RedisStorage(redisConfig);
+        this.databaseStorage = new DatabaseStorage(dbConfig);
+        this.wsServer = setupWebSocket();
+        this.monitor = new CacheMonitor();
     }
 
-    async set(key: string, value: any, ttl?: number): Promise<void> {
-        const autoTTL = this.optimizer.calculateTTL(key);
-        const finalTTL = ttl ?? autoTTL;
-
-        if (this.redisClient) {
-            await this.redisClient.setEx(key, finalTTL, JSON.stringify(value));
-        } else {
-            this.cache.set(key, value, { ttl: finalTTL * 1000 });
-        }
+    async set(key: string, value: any, options: { ttl?: number } = {}) {
+        const ttl = options.ttl || 300;
+        const compressedValue = compress(value);
+        
+        this.memoryStorage.set(key, compressedValue, ttl);
+        this.redisStorage.set(key, compressedValue, ttl);
+        this.databaseStorage.set(key, compressedValue);
     }
 
-    async get(key: string): Promise<any> {
-        if (this.redisClient) {
-            const data = await this.redisClient.get(key);
-            return data ? JSON.parse(data) : null;
-        }
-        return this.cache.has(key) ? this.cache.get(key) : null;
+    async get(key: string) {
+        let value = this.memoryStorage.get(key) || await this.redisStorage.get(key) || await this.databaseStorage.get(key);
+        return value ? decompress(value) : null;
     }
 
-
-    async delete(key: string): Promise<void> {
-        if (this.redisClient) {
-            await this.redisClient.del(key);
-        } else {
-            this.cache.delete(key);
-        }
+    async delete(key: string) {
+        this.memoryStorage.delete(key);
+        this.redisStorage.delete(key);
+        this.databaseStorage.delete(key);
+        broadcastInvalidation(this.wsServer, key);
     }
 
-    async clear(): Promise<void> {
-        if (this.redisClient) {
-            await this.redisClient.flushAll();
-        } else {
-            this.cache.clear();
+    async clear() {
+        this.memoryStorage.clear();
+        this.redisStorage.clear?.();
+    
+        if (this.databaseStorage) {
+            await this.databaseStorage.clear?.();
         }
     }
+    
 }
 
 export default SmartCacheDB;

@@ -1,2 +1,2 @@
-import SmartCacheDB from "./cache";
+import SmartCacheDB from './cache';
 export default SmartCacheDB;

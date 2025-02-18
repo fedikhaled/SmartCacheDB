@@ -4,15 +4,14 @@
   "description": "AI-powered adaptive caching for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-"scripts": {
-  "build": "tsc",
-  "test": "jest --config=jest.config.js"
-}
-,
-
+  "scripts": {
+    "build": "tsc",
+    "test": "jest --config=jest.config.js"
+  },
   "dependencies": {
-    "lru-cache": "^10.1.1",
-    "redis": "^4.6.7"
+    "lru-cache": "^10.4.3",
+    "redis": "^4.7.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

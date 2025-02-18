@@ -1,30 +1,65 @@
-import SmartCacheDB from "..";
+import SmartCacheDB from "../cache";
+
+let cache: SmartCacheDB;
 
 describe('SmartCacheDB Tests', () => {
-    let cache: SmartCacheDB;
-
-    beforeEach(() => {
-        cache = new SmartCacheDB('memory');
+    beforeAll(() => {
+        cache = new SmartCacheDB(['memory', 'redis'], { host: 'localhost', port: 6379 });
     });
 
-    test('should store and retrieve a value', async () => {
-        await cache.set('user:1', { name: 'Alice', age: 30 });
-        const value = await cache.get('user:1');
-        expect(value).toEqual({ name: 'Alice', age: 30 });
+    afterAll(async () => {
+        await cache.clear();
     });
 
-    test('should delete a value', async () => {
-        await cache.set('user:2', { name: 'Bob' });
-        await cache.delete('user:2');
-        const value = await cache.get('user:2');
+    test('should store and retrieve a value in memory', async () => {
+        await cache.set('memKey', 'memoryValue');
+        const value = await cache.get('memKey');
+        expect(value).toBe('memoryValue');
+    });
+
+    test('should store and retrieve a value in Redis', async () => {
+        await cache.set('redisKey', 'redisValue');
+        const value = await cache.get('redisKey');
+        expect(value).toBe('redisValue');
+    });
+
+    test('should delete a value from cache', async () => {
+        await cache.set('delKey', 'deleteValue');
+        await cache.delete('delKey');
+        const value = await cache.get('delKey');
         expect(value).toBeNull();
     });
 
-    test('should clear all values', async () => {
-        await cache.set('user:3', { name: 'Charlie' });
-        await cache.set('user:4', { name: 'Dave' });
+    test('should clear all values from cache', async () => {
+        await cache.set('clearKey', 'clearValue');
         await cache.clear();
-        expect(await cache.get('user:3')).toBeNull();
-        expect(await cache.get('user:4')).toBeNull();
+        const value = await cache.get('clearKey');
+        expect(value).toBeNull();
+    });
+
+    test('should handle non-existing keys gracefully', async () => {
+        const value = await cache.get('nonExistingKey');
+        expect(value).toBeNull();
+    });
+
+    test('should handle setting objects in cache', async () => {
+        const obj = { name: 'Alice', age: 30 };
+        await cache.set('objectKey', obj);
+        const value = await cache.get('objectKey');
+        expect(value).toEqual(obj);
+    });
+
+    test('should store and retrieve compressed values', async () => {
+        const largeData = 'A'.repeat(1000);
+        await cache.set('compressedKey', largeData, { ttl: 600 });
+        const value = await cache.get('compressedKey');
+        expect(value).toBe(largeData);
+    });
+
+    test('should store values with expiration', async () => {
+        await cache.set('ttlKey', 'expireTest', { ttl: 1 });
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for TTL expiration
+        const value = await cache.get('ttlKey');
+        expect(value).toBeNull();
     });
 });

@@ -11,6 +11,10 @@ It supports **in-memory storage (LRU)** and **Redis**, reducing database load an
 ✅ **Auto-Invalidation** - Cache updates automatically when data changes.  
 ✅ **LRU Cache Support** - Uses Least Recently Used (LRU) caching.  
 ✅ **Simple API** - Works as a drop-in replacement for Redis/Memcached.  
+✅ **WebSocket-Based Cache Invalidation** - Real-time cache updates when data changes.  
+✅ **Persistent Storage Support** - Keep cache even after server restarts.  
+✅ **Compression Support** - Reduce memory usage with Gzip compression.  
+✅ **Multi-Backend Support** - Use multiple storage backends together (e.g., Memory + Redis).  
 
 ---
 
@@ -32,7 +36,7 @@ yarn add smartcachedb
 import SmartCacheDB from 'smartcachedb';
 
 // Initialize cache (default: in-memory)
-const cache = new SmartCacheDB('memory');
+const cache = new SmartCacheDB(['memory']);
 
 // Store a value
 await cache.set('user:1', { name: "Alice", age: 30 });
@@ -55,7 +59,7 @@ await cache.clear();
 import SmartCacheDB from 'smartcachedb';
 
 // Initialize with Redis
-const cache = new SmartCacheDB('redis', { host: 'localhost', port: 6379 });
+const cache = new SmartCacheDB(['redis'], { host: 'localhost', port: 6379 });
 
 // Store and retrieve data
 await cache.set('product:123', { name: "Laptop", price: 1200 });
@@ -108,7 +112,7 @@ Contributions are welcome! To contribute:
 
 ## 📞 **Contact**
 For questions or feature requests, feel free to reach out:
-- **GitHub Issues:** [Open an issue](https://github.com/fedikhaled/SmartCacheDB/issues)
+- **GitHub Issues:** [Open an issue](https://github.com/fedikhaled/SmartCacheDB)
 - **Email:** fedikhaled01@gmail.com**
 
 ---
