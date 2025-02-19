@@ -1,6 +1,6 @@
 # 🚀 SmartCacheDB - High-Performance Adaptive Caching for Node.js  
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)  
-**SmartCacheDB** is an AI-powered caching system for Node.js that **dynamically optimizes cache expiration** based on access patterns.  
+**SmartCacheDB** is a high-performance caching system for Node.js that **dynamically optimizes cache expiration** based on access patterns.  
 It supports **in-memory storage (LRU)** and **Redis**, reducing database load and improving performance.  
 
 ---
@@ -68,56 +68,65 @@ docker run --name redis -d -p 6379:6379 redis
 
 ---
 
-## 🚀 **Usage**
-### **1️⃣ Basic Usage**
+## 🚀 **Usage Examples**
+
+### **1️⃣ Basic Usage - In-Memory Caching**
 ```typescript
 import SmartCacheDB from 'smartcachedb';
 
-// Initialize cache (default: in-memory)
 const cache = new SmartCacheDB(['memory']);
-
-// Store a value
-await cache.set('user:1', { name: "Alice", age: 30 });
-
-// Retrieve value
-const value = await cache.get('user:1');
-console.log(value); // { name: "Alice", age: 30 }
-
-// Delete a value
-await cache.delete('user:1');
-
-// Clear cache
-await cache.clear();
+await cache.set('user:1', { name: 'Alice', age: 30 });
+const user = await cache.get('user:1');
+console.log(user);
 ```
-
----
 
 ### **2️⃣ Using Redis as Storage**
 ```typescript
-import SmartCacheDB from 'smartcachedb';
-
-// Initialize with Redis
 const cache = new SmartCacheDB(['redis'], { host: 'localhost', port: 6379 });
-
-// Store and retrieve data
-await cache.set('product:123', { name: "Laptop", price: 1200 });
-const product = await cache.get('product:123');
-
-console.log(product); // { name: "Laptop", price: 1200 }
+await cache.set('session:123', { token: 'abcdef' }, { ttl: 300 });
+const session = await cache.get('session:123');
+console.log(session);
 ```
-
----
 
 ### **3️⃣ Hybrid Caching (Memory + Redis)**
 ```typescript
 const cache = new SmartCacheDB(['memory', 'redis'], { redisConfig: { host: 'localhost', port: 6379 } });
+await cache.set('order:789', { items: 3, total: 100 });
+const order = await cache.get('order:789');
+console.log(order);
+```
 
-// Store data in hybrid mode
-await cache.set('session:456', { token: "abcd1234" });
+### **4️⃣ Compression Support**
+```typescript
+const cache = new SmartCacheDB(['memory']);
+await cache.set('analytics:data', { users: 10000, traffic: 'high' }, { compress: true });
+const analytics = await cache.get('analytics:data');
+console.log(analytics);
+```
 
-// Retrieve from cache
-const session = await cache.get('session:456');
-console.log(session);
+### **5️⃣ WebSocket-Based Cache Invalidation**
+```typescript
+import WebSocket from 'ws';
+const cache = new SmartCacheDB(['memory', 'redis'], { enableWebSocket: true });
+await cache.set('live:data', { status: 'active' });
+const ws = new WebSocket('ws://localhost:8080');
+ws.on('message', (data) => console.log("Cache invalidation message received:", data));
+await cache.delete('live:data');
+```
+
+### **6️⃣ API Caching with Express.js**
+```typescript
+import express from 'express';
+const app = express();
+const cache = new SmartCacheDB(['memory', 'redis'], { redisConfig: { host: 'localhost', port: 6379 } });
+app.get('/data', async (req, res) => {
+    const cachedData = await cache.get('api:data');
+    if (cachedData) return res.json({ source: 'cache', data: cachedData });
+    const freshData = { message: 'Fetched from API', timestamp: Date.now() };
+    await cache.set('api:data', freshData, { ttl: 600 });
+    res.json({ source: 'API', data: freshData });
+});
+app.listen(3000, () => console.log('Server running on port 3000'));
 ```
 
 ---
@@ -136,18 +145,6 @@ console.log(session);
 Run Jest tests using:
 ```sh
 npm test
-```
-Expected output:
-```
-PASS  src/tests/cache.test.ts
-✓ should store and retrieve a value in memory (9 ms)
-✓ should store and retrieve a value in Redis
-✓ should delete a value from cache (11 ms)
-✓ should clear all values from cache (3 ms)
-✓ should handle non-existing keys gracefully (2 ms)
-✓ should handle setting objects in cache (1 ms)
-✓ should store and retrieve compressed values
-✓ should store values with expiration (2007 ms)
 ```
 
 ---
@@ -174,5 +171,5 @@ For questions or feature requests, feel free to reach out:
 
 ---
 
-### 🚀 **Star this project if you like it!** ⭐  
+### 🚀 **Star this project if you like it!** ⭐
 
