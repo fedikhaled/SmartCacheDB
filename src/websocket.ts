@@ -1,7 +1,13 @@
 import WebSocket from 'ws';
 
+let wsServer: WebSocket.Server | null = null;
+
 export const setupWebSocket = (): WebSocket.Server => {
-    return new WebSocket.Server({ port: 8080 });
+    if (wsServer) {
+        wsServer.close(); // Ensure previous instance is closed
+    }
+    wsServer = new WebSocket.Server({ port: 0 }); // Use a dynamic port
+    return wsServer;
 };
 
 export const broadcastInvalidation = (wsServer: WebSocket.Server, key: string) => {

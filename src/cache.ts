@@ -27,7 +27,10 @@ class SmartCacheDB {
         if (this.storageType.includes('database')) {
             this.databaseStorage = new DatabaseStorage(dbConfig);
         }
-        this.wsServer = setupWebSocket();
+        if (!this.wsServer) {
+            this.wsServer = setupWebSocket();
+        }
+        
         this.monitor = new CacheMonitor();
     }
 
