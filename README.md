@@ -152,24 +152,35 @@ app.listen(3000, () => console.log('Server running on port 3000'));
 
 ---
 
+## **🛠️ API Methods**
+| Method | Description |
+|--------|------------|
+| `set(key, value, ttl?)` | Stores a value with optional TTL |
+| `get(key)` | Retrieves a value |
+| `delete(key)` | Deletes a value |
+| `clear()` | Clears the entire cache |
+| `setMany(keysValues, ttl?)` | Stores multiple key-value pairs with optional TTL |
+| `getMany(keys)` | Retrieves multiple values |
+| `deleteMany(keys)` | Deletes multiple keys |
+| `setWithTag(key, value, tags, ttl?)` | Stores a value and assigns tags for group invalidation |
+| `deleteByTag(tag)` | Deletes all cache entries associated with a specific tag |
+| `setWithAutoRefresh(key, value, ttl, refreshCallback)` | Stores a value and auto-refreshes before expiration |
+| `setJSON(key, json, ttl?)` | Stores a JSON object in cache |
+| `getJSON(key)` | Retrieves and parses a stored JSON object |
+| `setBuffer(key, buffer, ttl?)` | Stores binary data in cache |
+| `getBuffer(key)` | Retrieves binary data from cache |
+
+---
+
+
 ## 📜 **License**
 This project is **open-source** and available under the **MIT License**.
 
 ---
 
-## 🌟 **Contributing**
-Contributions are welcome! To contribute:
-1. **Fork the repository**
-2. **Create a new branch** (`git checkout -b feature-name`)
-3. **Commit your changes** (`git commit -m "Added new feature"`)
-4. **Push to GitHub** (`git push origin feature-name`)
-5. **Submit a Pull Request**
-
----
-
 ## 📞 **Contact**
 For questions or feature requests, feel free to reach out:
-- **GitHub Issues:** [Open an issue](https://github.com/fedikhaled/SmartCacheDB)
+- **GitHub Issues:** [Open an issue](https://github.com/fedikhaled/SmartCacheDB/issues)
 - **Email:** fedikhaled01@gmail.com 
 
 ---
