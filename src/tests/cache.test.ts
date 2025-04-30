@@ -114,6 +114,9 @@ describe("SmartCacheDB Tests", () => {
         expect(value).toBe(150);
     });
 
+    
+
+
 
 
     test("should support hybrid caching (memory + Redis)", async () => {
