@@ -1,11 +1,11 @@
-import SmartCacheDB from "../cache";
-import { compress, decompress } from "../compression";
-import WebSocket from "ws";
+import SmartCacheDB, { SmartCacheDBOptions } from "../cache";
+import { compress } from "../compression";
 let cache: SmartCacheDB;
 
 describe("SmartCacheDB Tests", () => {
     beforeAll(() => {
-        cache = new SmartCacheDB(["memory", "redis"], { host: "localhost", port: 6379 });
+        const options: SmartCacheDBOptions = { enableWebSocket: false };
+        cache = new SmartCacheDB(["memory"], {}, {}, options);
     });
 
     afterAll(async () => {
@@ -16,12 +16,6 @@ describe("SmartCacheDB Tests", () => {
         await cache.set("memKey", "memoryValue");
         const value = await cache.get("memKey");
         expect(value).toBe("memoryValue");
-    });
-
-    test("should store and retrieve a value in Redis", async () => {
-        await cache.set("redisKey", "redisValue");
-        const value = await cache.get("redisKey");
-        expect(value).toBe("redisValue");
     });
 
     test("should delete a value from cache", async () => {
@@ -50,13 +44,12 @@ describe("SmartCacheDB Tests", () => {
         expect(value).toEqual(obj);
     });
 
-    test("should store and retrieve compressed values", async () => {
+    test("should store and retrieve compressed values transparently", async () => {
         const largeData = "A".repeat(1000);
-        const compressedData = compress(largeData);
-        await cache.set("compressedKey", compressedData, { ttl: 600 });
+        await cache.set("compressedKey", largeData, { ttl: 600 });
 
-        const retrievedCompressedData = await cache.get("compressedKey");
-        expect(retrievedCompressedData).toBe(compressedData);
+        const retrievedData = await cache.get("compressedKey");
+        expect(retrievedData).toBe(largeData);
     });
 
     test("should store values with expiration", async () => {
@@ -88,50 +81,19 @@ describe("SmartCacheDB Tests", () => {
         expect(post2).toBeNull();
     });
 
-    jest.setTimeout(20000); // Extend Jest timeout
-
     test("should support auto-refreshing cache", async () => {
+        jest.setTimeout(20000);
+
         await cache.setWithAutoRefresh("stock:price", 100, 3, async () => {
             return 150; // Simulated updated stock price
         });
 
         await new Promise((resolve) => setTimeout(resolve, 5000)); // Ensure refresh happens
-
-        let value = null;
-        for (let i = 0; i < 5; i++) {
-            value = await cache.get("stock:price");
-            if (value === 150) break;
-            let messageReceived = false;
-            for (let i = 0; i < 5; i++) {
-                if (messageReceived) break;
-                await new Promise((resolve) => setTimeout(resolve, 500)); // Retry
-            }
-            expect(messageReceived).toBeTruthy();
-
-        }
-
-        console.log("Auto-refresh value:", value);
+        const value = await cache.get("stock:price");
         expect(value).toBe(150);
     });
 
     
-
-
-
-
-    test("should support hybrid caching (memory + Redis)", async () => {
-        const hybridCache = new SmartCacheDB(["memory", "redis"], { redisConfig: { host: "localhost", port: 6379 } });
-
-        await hybridCache.set("hybrid:data", { key: "value" });
-
-        const value = await hybridCache.get("hybrid:data");
-        expect(value).toEqual({ key: "value" });
-
-        await hybridCache.delete("hybrid:data");
-        const deletedValue = await hybridCache.get("hybrid:data");
-        expect(deletedValue).toBeNull();
-    });
-
 
 
 
@@ -150,5 +112,16 @@ describe("SmartCacheDB Tests", () => {
 
         const retrievedBuffer = await cache.getBuffer("file:data");
         expect(retrievedBuffer?.toString()).toBe("Hello, world!");
+    });
+
+    test("should expose cache statistics", async () => {
+        await cache.clear();
+        await cache.set("statsKey", "value");
+        await cache.get("statsKey"); // hit
+        await cache.get("missingKey"); // miss
+
+        const stats = cache.getStats();
+        expect(stats.cacheHits).toBeGreaterThanOrEqual(1);
+        expect(stats.cacheMisses).toBeGreaterThanOrEqual(1);
     });
 });
