@@ -5,6 +5,8 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.2.0 - 2026-07-31
+
 ### Breaking changes
 
 - The zero-argument constructor now defaults to memory-only storage. Redis must

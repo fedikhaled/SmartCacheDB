@@ -1,6 +1,6 @@
 {
   "name": "smartcachedb",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "High-Performance Adaptive Caching for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -40,6 +40,9 @@
     "url": "https://github.com/fedikhaled/SmartCacheDB/issues"
   },
   "homepage": "https://github.com/fedikhaled/SmartCacheDB#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "lru-cache": "^11.5.2",
     "redis": "^4.7.0",
