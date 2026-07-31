@@ -20,6 +20,8 @@ follows [Semantic Versioning](https://semver.org/).
   statistics.
 - A typed options-object constructor with configurable default TTL and in-memory
   LRU capacity. The positional constructor remains supported.
+- Cache-aside `getOrSet` loading with process-local request deduplication, TTL,
+  and tag support.
 - Explicit `close()` lifecycle management and process-local hit/miss statistics.
 - Optional error handling for auto-refresh callbacks.
 - Isolated Redis integration tests, multi-version CI, coverage thresholds, and

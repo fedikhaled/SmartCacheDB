@@ -113,6 +113,62 @@ describe('SmartCacheDB memory storage', () => {
         });
     });
 
+    test('getOrSet returns a cache hit without calling the loader', async () => {
+        const loader = jest.fn().mockResolvedValue('loaded');
+        await cache.set('user:1', 'cached');
+
+        await expect(cache.getOrSet('user:1', loader)).resolves.toBe('cached');
+        expect(loader).not.toHaveBeenCalled();
+    });
+
+    test('getOrSet deduplicates concurrent loads for the same key', async () => {
+        let resolveLoad!: (value: { id: number }) => void;
+        const loader = jest.fn(() => new Promise<{ id: number }>(resolve => {
+            resolveLoad = resolve;
+        }));
+
+        const requests = Array.from({ length: 10 }, () => cache.getOrSet('user:1', loader));
+        await Promise.resolve();
+        resolveLoad({ id: 1 });
+
+        await expect(Promise.all(requests)).resolves.toEqual(
+            Array.from({ length: 10 }, () => ({ id: 1 }))
+        );
+        expect(loader).toHaveBeenCalledTimes(1);
+        await expect(cache.get('user:1')).resolves.toEqual({ id: 1 });
+    });
+
+    test('getOrSet removes failed loads so callers can retry', async () => {
+        const loader = jest.fn()
+            .mockRejectedValueOnce(new Error('loader failed'))
+            .mockResolvedValueOnce('recovered');
+
+        await expect(cache.getOrSet('key', loader)).rejects.toThrow('loader failed');
+        await expect(cache.getOrSet('key', loader)).resolves.toBe('recovered');
+
+        expect(loader).toHaveBeenCalledTimes(2);
+    });
+
+    test('getOrSet applies TTL and tag options to loaded values', async () => {
+        await cache.getOrSet('post:1', async () => ({ title: 'Post' }), {
+            ttl: 30,
+            tags: ['posts']
+        });
+
+        await cache.deleteByTag('posts');
+
+        await expect(cache.get('post:1')).resolves.toBeNull();
+    });
+
+    test('getOrSet does not cache null loader results', async () => {
+        const loader = jest.fn().mockResolvedValue(null);
+
+        await expect(cache.getOrSet('missing', loader)).resolves.toBeNull();
+        await expect(cache.getOrSet('missing', loader)).resolves.toBeNull();
+
+        expect(loader).toHaveBeenCalledTimes(2);
+    });
+
     test('invalidates all keys associated with a tag', async () => {
         await cache.setWithTag('post:1', { title: 'First' }, ['posts']);
         await cache.setWithTag('post:2', { title: 'Second' }, ['posts']);

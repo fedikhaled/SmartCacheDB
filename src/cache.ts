@@ -8,6 +8,7 @@ import WebSocket from 'ws';
 import type {
     CacheStats,
     DatabaseConfig,
+    GetOrSetOptions,
     MemoryStorageOptions,
     SetOptions,
     SmartCacheOptions,
@@ -25,6 +26,7 @@ class SmartCacheDB {
     private monitor: CacheMonitor;
     private tagStorage = new Map<string, Set<string>>();
     private refreshTimers = new Set<NodeJS.Timeout>();
+    private inFlightLoads = new Map<string, Promise<unknown>>();
     private closePromise?: Promise<void>;
 
     constructor();
@@ -136,6 +138,40 @@ class SmartCacheDB {
         return decompress(value) as T;
     }
 
+    async getOrSet<T>(
+        key: string,
+        loader: () => Promise<T>,
+        options: GetOrSetOptions = {}
+    ): Promise<T> {
+        this.assertOpen();
+        const cachedValue = await this.get<T>(key);
+        if (cachedValue !== null) return cachedValue;
+
+        const existingLoad = this.inFlightLoads.get(key) as Promise<T> | undefined;
+        if (existingLoad) return existingLoad;
+
+        const load = (async () => {
+            const loadedValue = await loader();
+            if (loadedValue !== null) {
+                if (options.tags?.length) {
+                    await this.setWithTag(key, loadedValue, options.tags, options.ttl);
+                } else {
+                    await this.set(key, loadedValue, { ttl: options.ttl });
+                }
+            }
+            return loadedValue;
+        })();
+
+        this.inFlightLoads.set(key, load);
+        try {
+            return await load;
+        } finally {
+            if (this.inFlightLoads.get(key) === load) {
+                this.inFlightLoads.delete(key);
+            }
+        }
+    }
+
     async delete(key: string): Promise<void> {
         this.assertOpen();
         const deletions: Promise<unknown>[] = [];
@@ -182,6 +218,7 @@ class SmartCacheDB {
             clearTimeout(timer);
         }
         this.refreshTimers.clear();
+        this.inFlightLoads.clear();
         this.memoryStorage?.clear();
         this.tagStorage.clear();
 
@@ -218,7 +255,7 @@ class SmartCacheDB {
     }
 
 
-    async setWithTag(key: string, value: unknown, tags: string[], ttl?: number): Promise<void> {
+    async setWithTag(key: string, value: unknown, tags: readonly string[], ttl?: number): Promise<void> {
         await this.set(key, value, { ttl });
         for (const tag of tags) {
             const keys = this.tagStorage.get(tag) ?? new Set<string>();

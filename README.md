@@ -141,6 +141,23 @@ await cache.clear();
 `clear()` clears every configured backend. Treat it as an administrative
 operation, especially with Redis, where it calls `FLUSHDB`.
 
+### Cache-aside loading
+
+Use `getOrSet` to read a cached value or load and cache it on a miss:
+
+```ts
+const user = await cache.getOrSet(
+  'user:42',
+  () => database.users.findById(42),
+  { ttl: 300, tags: ['users'] }
+);
+```
+
+Concurrent misses for the same key share one in-flight loader promise within
+the process. Loader errors are returned to every waiting caller and are not
+cached, so a later request can retry. A `null` loader result is returned but is
+not cached.
+
 ### Batch operations
 
 ```ts
