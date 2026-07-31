@@ -13,11 +13,15 @@ Thank you for helping improve SmartCacheDB.
    npm run build
    npm run typecheck
    npm test -- --runInBand
+   REDIS_URL=redis://localhost:6379 npm run test:integration
    npm pack --dry-run
    ```
 
 5. Open a pull request that explains the problem, the chosen solution, and any
    compatibility considerations.
+
+The Redis integration suite is skipped when `REDIS_URL` is not set. Run it
+before submitting changes to Redis behavior; CI always runs it against Redis 7.
 
 ## Branch and commit conventions
 

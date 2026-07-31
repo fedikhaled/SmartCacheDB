@@ -7,6 +7,7 @@ Describe the problem and the solution.
 - [ ] `npm run build`
 - [ ] `npm run typecheck`
 - [ ] `npm test -- --runInBand`
+- [ ] `npm run test:integration` when Redis behavior changes
 - [ ] `npm pack --dry-run`
 
 ## Compatibility
