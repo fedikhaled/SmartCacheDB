@@ -108,4 +108,21 @@ describe('SmartCacheDB memory storage', () => {
 
         expect(cache.stats()).toEqual({ cacheHits: 1, cacheMisses: 1 });
     });
+
+    test('requires at least one storage backend', async () => {
+        await cache.close();
+
+        expect(() => new SmartCacheDB([])).toThrow(TypeError);
+    });
+
+    test('cancels pending refresh work when closed', async () => {
+        jest.useFakeTimers();
+        const refresh = jest.fn().mockResolvedValue('new value');
+        await cache.setWithAutoRefresh('key', 'value', 10, refresh);
+
+        await cache.close();
+        jest.advanceTimersByTime(10000);
+
+        expect(refresh).not.toHaveBeenCalled();
+    });
 });

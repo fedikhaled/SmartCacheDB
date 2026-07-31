@@ -1,35 +1,35 @@
-import { createClient, RedisClientType } from 'redis';
+import { createClient, RedisClientOptions } from 'redis';
 
 export class RedisStorage {
-    private client: RedisClientType;
+    private client: ReturnType<typeof createClient>;
     private connection: Promise<void>;
 
-    constructor(config: any) {
-        this.client = createClient(config);
+    constructor(config: RedisClientOptions) {
+        this.client = createClient(config) as ReturnType<typeof createClient>;
         this.connection = this.client.connect().then(() => undefined);
     }
 
-    async set(key: string, value: any, ttl: number) {
+    async set(key: string, value: string, ttl: number): Promise<void> {
         await this.connection;
         await this.client.setEx(key, ttl, value);
     }
 
-    async get(key: string): Promise<any> {
+    async get(key: string): Promise<string | null> {
         await this.connection;
         return await this.client.get(key);
     }
 
-    async delete(key: string) {
+    async delete(key: string): Promise<void> {
         await this.connection;
         await this.client.del(key);
     }
 
-    async clear() {
+    async clear(): Promise<void> {
         await this.connection;
         await this.client.flushDb();
     }
 
-    async close() {
+    async close(): Promise<void> {
         await this.connection;
         if (this.client.isOpen) {
             await this.client.quit();
