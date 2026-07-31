@@ -18,6 +18,8 @@ follows [Semantic Versioning](https://semver.org/).
 
 - Strict exported TypeScript types for storage, Redis, database, TTL, and cache
   statistics.
+- A typed options-object constructor with configurable default TTL and in-memory
+  LRU capacity. The positional constructor remains supported.
 - Explicit `close()` lifecycle management and process-local hit/miss statistics.
 - Optional error handling for auto-refresh callbacks.
 - Isolated Redis integration tests, multi-version CI, coverage thresholds, and

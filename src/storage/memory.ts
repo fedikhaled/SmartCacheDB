@@ -1,10 +1,11 @@
 import { LRUCache } from 'lru-cache';
+import type { MemoryStorageOptions } from '../types';
 
 export class MemoryStorage {
     private cache: LRUCache<string, string>;
 
-    constructor() {
-        this.cache = new LRUCache({ max: 500 });
+    constructor(options: MemoryStorageOptions = {}) {
+        this.cache = new LRUCache({ max: options.max ?? 500 });
     }
 
     set(key: string, value: string, ttl: number): void {

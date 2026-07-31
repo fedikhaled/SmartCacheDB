@@ -27,7 +27,11 @@ Use memory-only storage when no external service is required:
 ```ts
 import SmartCacheDB from 'smartcachedb';
 
-const cache = new SmartCacheDB(['memory']);
+const cache = new SmartCacheDB({
+  storage: ['memory'],
+  defaultTtl: 300,
+  memory: { max: 500 }
+});
 
 await cache.set('user:42', { name: 'Ada' }, { ttl: 300 });
 const user = await cache.get<{ name: string }>('user:42');
@@ -46,7 +50,10 @@ compressed before being written to a backend.
 ### Memory
 
 ```ts
-const cache = new SmartCacheDB(['memory']);
+const cache = new SmartCacheDB({
+  storage: ['memory'],
+  memory: { max: 1_000 }
+});
 ```
 
 Memory storage uses an LRU cache with a maximum of 500 entries. It is local to
@@ -58,8 +65,11 @@ Redis options follow the [`redis`](https://www.npmjs.com/package/redis) client
 configuration format:
 
 ```ts
-const cache = new SmartCacheDB(['redis'], {
-  url: 'redis://localhost:6379'
+const cache = new SmartCacheDB({
+  storage: ['redis'],
+  redis: {
+    url: 'redis://localhost:6379'
+  }
 });
 
 await cache.set('session:123', { active: true }, { ttl: 60 });
@@ -69,10 +79,13 @@ await cache.close();
 Socket configuration is also supported:
 
 ```ts
-const cache = new SmartCacheDB(['redis'], {
-  socket: {
-    host: 'localhost',
-    port: 6379
+const cache = new SmartCacheDB({
+  storage: ['redis'],
+  redis: {
+    socket: {
+      host: 'localhost',
+      port: 6379
+    }
   }
 });
 ```
@@ -80,10 +93,11 @@ const cache = new SmartCacheDB(['redis'], {
 ### Multiple backends
 
 ```ts
-const cache = new SmartCacheDB(
-  ['memory', 'redis'],
-  { url: process.env.REDIS_URL }
-);
+const cache = new SmartCacheDB({
+  storage: ['memory', 'redis'],
+  memory: { max: 2_000 },
+  redis: { url: process.env.REDIS_URL }
+});
 ```
 
 Writes and deletions are applied to every configured backend. Reads check
@@ -103,11 +117,10 @@ CREATE TABLE cache (
 ```
 
 ```ts
-const cache = new SmartCacheDB(
-  ['database'],
-  {},
-  { connection: databaseConnection }
-);
+const cache = new SmartCacheDB({
+  storage: ['database'],
+  database: { connection: databaseConnection }
+});
 ```
 
 The current database adapter uses `?` placeholders and MySQL's
@@ -183,9 +196,12 @@ Statistics are process-local and cover calls made through that cache instance.
 ### Optional WebSocket invalidation events
 
 ```ts
-const cache = new SmartCacheDB(['memory'], {
-  enableWebSocket: true,
-  webSocketPort: 8080
+const cache = new SmartCacheDB({
+  storage: ['memory'],
+  websocket: {
+    enabled: true,
+    port: 8080
+  }
 });
 ```
 
@@ -205,6 +221,21 @@ process.once('SIGTERM', async () => {
 
 `close()` cancels pending refresh timers, closes the Redis connection, and
 stops the optional WebSocket server.
+
+## Legacy constructor compatibility
+
+The positional constructor remains supported for existing applications:
+
+```ts
+const cache = new SmartCacheDB(
+  ['memory', 'redis'],
+  { url: 'redis://localhost:6379' },
+  { connection: databaseConnection }
+);
+```
+
+New code should use the options-object form because it keeps backend settings
+separate and supports memory capacity and default TTL configuration.
 
 ## Development
 
