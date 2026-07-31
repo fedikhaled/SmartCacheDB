@@ -182,13 +182,21 @@ class SmartCacheDB {
     }
 
 
-    async setWithAutoRefresh<T>(key: string, value: T, ttl: number, refreshCallback: () => Promise<T>): Promise<void> {
+    async setWithAutoRefresh<T>(
+        key: string,
+        value: T,
+        ttl: number,
+        refreshCallback: () => Promise<T>,
+        onRefreshError: (error: unknown) => void = () => undefined
+    ): Promise<void> {
         await this.set(key, value, { ttl });
 
         const timer = setTimeout(async () => {
             try {
                 const newValue = await refreshCallback();
                 await this.set(key, newValue, { ttl });
+            } catch (error) {
+                onRefreshError(error);
             } finally {
                 this.refreshTimers.delete(timer);
             }

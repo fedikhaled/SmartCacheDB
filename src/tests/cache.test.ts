@@ -111,6 +111,24 @@ describe('SmartCacheDB memory storage', () => {
         await expect(cache.get('stock:price')).resolves.toBe(150);
     });
 
+    test('reports auto-refresh failures without an unhandled rejection', async () => {
+        jest.useFakeTimers();
+        const error = new Error('refresh failed');
+        const onRefreshError = jest.fn();
+
+        await cache.setWithAutoRefresh(
+            'stock:price',
+            100,
+            10,
+            async () => { throw error; },
+            onRefreshError
+        );
+        await jest.advanceTimersByTimeAsync(9000);
+
+        expect(onRefreshError).toHaveBeenCalledWith(error);
+        await expect(cache.get('stock:price')).resolves.toBe(100);
+    });
+
     test('supports JSON and Buffer helpers', async () => {
         await cache.setJSON('settings', { theme: 'dark' });
         await cache.setBuffer('file', Buffer.from('hello'));

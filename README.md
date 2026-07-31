@@ -153,11 +153,14 @@ and does not survive restarts.
 ```ts
 await cache.setWithAutoRefresh('price', initialPrice, 60, async () => {
   return fetchCurrentPrice();
+}, error => {
+  logger.error({ error }, 'Cache refresh failed');
 });
 ```
 
-The callback runs once at 90% of the TTL and replaces the stored value. Calling
-`close()` cancels refresh callbacks that have not started.
+The callback runs once at 90% of the TTL and replaces the stored value. The
+optional error callback receives refresh or write failures. Calling `close()`
+cancels refresh callbacks that have not started.
 
 ### JSON and Buffer helpers
 
