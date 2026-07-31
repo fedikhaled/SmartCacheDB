@@ -8,7 +8,7 @@ export class MemoryStorage {
     }
 
     set(key: string, value: any, ttl: number) {
-        this.cache.set(key, value, { ttl });
+        this.cache.set(key, value, { ttl: ttl * 1000 });
     }
 
     get(key: string) {

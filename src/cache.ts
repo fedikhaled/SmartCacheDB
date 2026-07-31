@@ -4,65 +4,112 @@ import { DatabaseStorage } from './storage/database';
 import { compress, decompress } from './compression';
 import { setupWebSocket, broadcastInvalidation } from './websocket';
 import { CacheMonitor } from './monitoring';
+import WebSocket from 'ws';
 
 class SmartCacheDB {
     private memoryStorage?: MemoryStorage;
     private redisStorage?: RedisStorage;
     private databaseStorage?: DatabaseStorage;
-    private wsServer: any;
+    private wsServer?: WebSocket.Server;
     private monitor: CacheMonitor;
     private tagStorage: Record<string, string[]> = {};
 
     constructor(
         private storageType: string[] = ['memory', 'redis'],
-        redisConfig = {},
+        redisConfig: any = {},
         dbConfig = {}
     ) {
+        const {
+            enableWebSocket = false,
+            webSocketPort = 0,
+            redisConfig: nestedRedisConfig,
+            ...directRedisConfig
+        } = redisConfig;
+
         if (this.storageType.includes('memory')) {
             this.memoryStorage = new MemoryStorage();
         }
         if (this.storageType.includes('redis')) {
-            this.redisStorage = new RedisStorage(redisConfig);
+            this.redisStorage = new RedisStorage(nestedRedisConfig ?? directRedisConfig);
         }
         if (this.storageType.includes('database')) {
             this.databaseStorage = new DatabaseStorage(dbConfig);
         }
-        if (!this.wsServer) {
-            this.wsServer = setupWebSocket();
+        if (enableWebSocket) {
+            this.wsServer = setupWebSocket(webSocketPort);
         }
         
         this.monitor = new CacheMonitor();
     }
 
-    async set(key: string, value: any, options: { ttl?: number } = {}) {
-        const ttl = options.ttl || 300;
+    async set(key: string, value: any, options: { ttl?: number } = {}): Promise<void> {
+        const ttl = options.ttl ?? 300;
+        if (!Number.isFinite(ttl) || ttl <= 0) {
+            throw new RangeError('TTL must be a positive number of seconds');
+        }
+
         const compressedValue = compress(value);
+        const writes: Promise<unknown>[] = [];
 
         if (this.memoryStorage) this.memoryStorage.set(key, compressedValue, ttl);
-        if (this.redisStorage) this.redisStorage.set(key, compressedValue, ttl);
-        if (this.databaseStorage) this.databaseStorage.set(key, compressedValue);
+        if (this.redisStorage) writes.push(this.redisStorage.set(key, compressedValue, ttl));
+        if (this.databaseStorage) writes.push(this.databaseStorage.set(key, compressedValue));
+
+        await Promise.all(writes);
     }
 
-    async get(key: string) {
-        let value =
+    async get(key: string): Promise<any | null> {
+        const value =
             (this.memoryStorage && this.memoryStorage.get(key)) ||
             (this.redisStorage && (await this.redisStorage.get(key))) ||
             (this.databaseStorage && (await this.databaseStorage.get(key)));
 
-        return value ? decompress(value) : null;
+        if (value === undefined || value === null) {
+            this.monitor.recordMiss();
+            return null;
+        }
+
+        this.monitor.recordHit();
+        return decompress(value);
     }
 
-    async delete(key: string) {
+    async delete(key: string): Promise<void> {
+        const deletions: Promise<unknown>[] = [];
+
         if (this.memoryStorage) this.memoryStorage.delete(key);
-        if (this.redisStorage) this.redisStorage.delete(key);
-        if (this.databaseStorage) this.databaseStorage.delete(key);
-        broadcastInvalidation(this.wsServer, key);
+        if (this.redisStorage) deletions.push(this.redisStorage.delete(key));
+        if (this.databaseStorage) deletions.push(this.databaseStorage.delete(key));
+
+        await Promise.all(deletions);
+        if (this.wsServer) {
+            broadcastInvalidation(this.wsServer, key);
+        }
     }
 
-    async clear() {
+    async clear(): Promise<void> {
+        const clears: Promise<unknown>[] = [];
+
         if (this.memoryStorage) this.memoryStorage.clear();
-        if (this.redisStorage) this.redisStorage.clear?.();
-        if (this.databaseStorage) await this.databaseStorage.clear?.();
+        if (this.redisStorage) clears.push(this.redisStorage.clear());
+        if (this.databaseStorage) clears.push(this.databaseStorage.clear());
+
+        await Promise.all(clears);
+    }
+
+    stats() {
+        return this.monitor.stats();
+    }
+
+    async close(): Promise<void> {
+        if (this.redisStorage) {
+            await this.redisStorage.close();
+        }
+
+        if (this.wsServer) {
+            await new Promise<void>((resolve, reject) => {
+                this.wsServer!.close(error => error ? reject(error) : resolve());
+            });
+        }
     }
 
 
