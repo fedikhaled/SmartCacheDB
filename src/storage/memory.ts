@@ -22,25 +22,4 @@ export class MemoryStorage {
     clear(): void {
         this.cache.clear();
     }
-
-   
-    setMany(keysValues: Record<string, string>, ttl = 300): void {
-        for (const key in keysValues) {
-            this.set(key, keysValues[key], ttl);
-        }
-    }
-
-    getMany(keys: string[]): Record<string, string | undefined> {
-        const results: Record<string, string | undefined> = {};
-        for (const key of keys) {
-            results[key] = this.get(key);
-        }
-        return results;
-    }
-
-    deleteMany(keys: string[]): void {
-        for (const key of keys) {
-            this.delete(key);
-        }
-    }
 }

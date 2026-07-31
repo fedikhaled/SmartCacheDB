@@ -35,6 +35,9 @@ const user = await cache.get<{ name: string }>('user:42');
 await cache.close();
 ```
 
+`new SmartCacheDB()` also defaults to memory-only storage. External backends
+must be selected explicitly.
+
 TTL values are expressed in seconds. Values are JSON-serialized and gzip
 compressed before being written to a backend.
 

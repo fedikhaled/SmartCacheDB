@@ -23,7 +23,7 @@ class SmartCacheDB {
     private refreshTimers = new Set<NodeJS.Timeout>();
 
     constructor(
-        private storageType: readonly StorageType[] = ['memory', 'redis'],
+        private storageType: readonly StorageType[] = ['memory'],
         redisConfig: SmartCacheRedisConfig = {},
         dbConfig: DatabaseConfig = {}
     ) {
@@ -36,6 +36,11 @@ class SmartCacheDB {
 
         if (this.storageType.length === 0) {
             throw new TypeError('At least one storage backend is required');
+        }
+        const supportedStorage = new Set<StorageType>(['memory', 'redis', 'database']);
+        const unsupportedStorage = this.storageType.find(storage => !supportedStorage.has(storage));
+        if (unsupportedStorage) {
+            throw new TypeError(`Unsupported storage backend: ${unsupportedStorage}`);
         }
         if (enableWebSocket && (!Number.isInteger(webSocketPort) || webSocketPort < 0 || webSocketPort > 65535)) {
             throw new RangeError('WebSocket port must be an integer between 0 and 65535');
@@ -131,8 +136,10 @@ class SmartCacheDB {
         }
 
         if (this.wsServer) {
+            const wsServer = this.wsServer;
+            this.wsServer = undefined;
             await new Promise<void>((resolve, reject) => {
-                this.wsServer!.close(error => error ? reject(error) : resolve());
+                wsServer.close(error => error ? reject(error) : resolve());
             });
         }
     }

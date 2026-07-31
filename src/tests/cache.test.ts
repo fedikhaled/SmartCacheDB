@@ -18,6 +18,15 @@ describe('SmartCacheDB memory storage', () => {
         await expect(cache.get('user:1')).resolves.toEqual({ name: 'Alice' });
     });
 
+    test('uses memory storage by default', async () => {
+        await cache.close();
+        cache = new SmartCacheDB();
+
+        await cache.set('default', 'memory');
+
+        await expect(cache.get('default')).resolves.toBe('memory');
+    });
+
     test('returns null for missing keys', async () => {
         await expect(cache.get('missing')).resolves.toBeNull();
     });
@@ -52,6 +61,15 @@ describe('SmartCacheDB memory storage', () => {
         'rejects invalid TTL value %s',
         async ttl => {
             await expect(cache.set('key', 'value', { ttl })).rejects.toThrow(RangeError);
+        }
+    );
+
+    test.each([undefined, BigInt(1), () => undefined])(
+        'rejects non-serializable value %s',
+        async value => {
+            await expect(cache.set('key', value)).rejects.toThrow(
+                'Cache values must be JSON-serializable'
+            );
         }
     );
 
@@ -115,6 +133,14 @@ describe('SmartCacheDB memory storage', () => {
         expect(() => new SmartCacheDB([])).toThrow(TypeError);
     });
 
+    test('rejects unsupported storage backends at runtime', async () => {
+        await cache.close();
+
+        expect(() => new SmartCacheDB(['filesystem' as never])).toThrow(
+            'Unsupported storage backend: filesystem'
+        );
+    });
+
     test('cancels pending refresh work when closed', async () => {
         jest.useFakeTimers();
         const refresh = jest.fn().mockResolvedValue('new value');
@@ -124,5 +150,11 @@ describe('SmartCacheDB memory storage', () => {
         jest.advanceTimersByTime(10000);
 
         expect(refresh).not.toHaveBeenCalled();
+    });
+
+    test('can be closed more than once', async () => {
+        await cache.close();
+
+        await expect(cache.close()).resolves.toBeUndefined();
     });
 });
