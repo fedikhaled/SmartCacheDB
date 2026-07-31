@@ -41,8 +41,8 @@ jobs:
       - name: Type-check source
         run: npm run typecheck
 
-      - name: Run tests
-        run: npm test -- --runInBand
+      - name: Run tests with coverage thresholds
+        run: npm run test:coverage -- --runInBand
 
       - name: Inspect package contents
         if: matrix.node-version == 20
