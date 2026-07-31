@@ -1,3 +1,5 @@
+import type { CacheStats } from './types';
+
 export class CacheMonitor {
     private cacheHits: number;
     private cacheMisses: number;
@@ -15,7 +17,7 @@ export class CacheMonitor {
         this.cacheMisses++;
     }
 
-    stats() {
+    stats(): CacheStats {
         return {
             cacheHits: this.cacheHits,
             cacheMisses: this.cacheMisses

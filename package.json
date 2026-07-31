@@ -4,10 +4,41 @@
   "description": "High-Performance Adaptive Caching for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "test": "jest --config=jest.config.js"
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --config=jest.config.js",
+    "test:integration": "jest --config=jest.integration.config.js --runInBand",
+    "test:coverage": "jest --config=jest.config.js --coverage",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedikhaled/SmartCacheDB.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fedikhaled/SmartCacheDB/issues"
+  },
+  "homepage": "https://github.com/fedikhaled/SmartCacheDB#readme",
   "dependencies": {
     "lru-cache": "^10.4.3",
     "redis": "^4.7.0",
@@ -16,6 +47,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^20.17.19",
+    "@types/ws": "^8.18.1",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
