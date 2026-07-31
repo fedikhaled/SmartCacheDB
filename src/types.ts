@@ -7,6 +7,11 @@ export interface SetOptions {
     ttl?: number;
 }
 
+export interface GetOrSetOptions extends SetOptions {
+    /** Process-local tags assigned when a loaded value is cached. */
+    tags?: readonly string[];
+}
+
 export interface CacheStats {
     cacheHits: number;
     cacheMisses: number;

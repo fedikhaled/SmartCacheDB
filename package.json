@@ -26,6 +26,7 @@
     "test": "jest --config=jest.config.js",
     "test:integration": "jest --config=jest.integration.config.js --runInBand",
     "test:coverage": "jest --config=jest.config.js --coverage",
+    "benchmark:memory": "npm run build && node benchmarks/memory.js",
     "prepack": "npm run build"
   },
   "engines": {

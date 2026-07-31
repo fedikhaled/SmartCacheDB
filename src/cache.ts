@@ -8,6 +8,7 @@ import WebSocket from 'ws';
 import type {
     CacheStats,
     DatabaseConfig,
+    GetOrSetOptions,
     MemoryStorageOptions,
     SetOptions,
     SmartCacheOptions,
@@ -25,6 +26,8 @@ class SmartCacheDB {
     private monitor: CacheMonitor;
     private tagStorage = new Map<string, Set<string>>();
     private refreshTimers = new Set<NodeJS.Timeout>();
+    private inFlightLoads = new Map<string, Promise<unknown>>();
+    private closePromise?: Promise<void>;
 
     constructor();
     constructor(options: SmartCacheOptions);
@@ -93,6 +96,7 @@ class SmartCacheDB {
     }
 
     async set(key: string, value: unknown, options: SetOptions = {}): Promise<void> {
+        this.assertOpen();
         const ttl = options.ttl ?? this.defaultTtl;
         this.validateTtl(ttl);
 
@@ -112,7 +116,14 @@ class SmartCacheDB {
         }
     }
 
+    private assertOpen(): void {
+        if (this.closePromise) {
+            throw new Error('SmartCacheDB instance is closed');
+        }
+    }
+
     async get<T = unknown>(key: string): Promise<T | null> {
+        this.assertOpen();
         const value =
             (this.memoryStorage && this.memoryStorage.get(key)) ||
             (this.redisStorage && (await this.redisStorage.get(key))) ||
@@ -127,7 +138,42 @@ class SmartCacheDB {
         return decompress(value) as T;
     }
 
+    async getOrSet<T>(
+        key: string,
+        loader: () => Promise<T>,
+        options: GetOrSetOptions = {}
+    ): Promise<T> {
+        this.assertOpen();
+        const cachedValue = await this.get<T>(key);
+        if (cachedValue !== null) return cachedValue;
+
+        const existingLoad = this.inFlightLoads.get(key) as Promise<T> | undefined;
+        if (existingLoad) return existingLoad;
+
+        const load = (async () => {
+            const loadedValue = await loader();
+            if (loadedValue !== null) {
+                if (options.tags?.length) {
+                    await this.setWithTag(key, loadedValue, options.tags, options.ttl);
+                } else {
+                    await this.set(key, loadedValue, { ttl: options.ttl });
+                }
+            }
+            return loadedValue;
+        })();
+
+        this.inFlightLoads.set(key, load);
+        try {
+            return await load;
+        } finally {
+            if (this.inFlightLoads.get(key) === load) {
+                this.inFlightLoads.delete(key);
+            }
+        }
+    }
+
     async delete(key: string): Promise<void> {
+        this.assertOpen();
         const deletions: Promise<unknown>[] = [];
 
         if (this.memoryStorage) this.memoryStorage.delete(key);
@@ -145,6 +191,7 @@ class SmartCacheDB {
     }
 
     async clear(): Promise<void> {
+        this.assertOpen();
         const clears: Promise<unknown>[] = [];
 
         if (this.memoryStorage) this.memoryStorage.clear();
@@ -159,11 +206,21 @@ class SmartCacheDB {
         return this.monitor.stats();
     }
 
-    async close(): Promise<void> {
+    close(): Promise<void> {
+        if (!this.closePromise) {
+            this.closePromise = this.performClose();
+        }
+        return this.closePromise;
+    }
+
+    private async performClose(): Promise<void> {
         for (const timer of this.refreshTimers) {
             clearTimeout(timer);
         }
         this.refreshTimers.clear();
+        this.inFlightLoads.clear();
+        this.memoryStorage?.clear();
+        this.tagStorage.clear();
 
         if (this.redisStorage) {
             await this.redisStorage.close();
@@ -198,7 +255,7 @@ class SmartCacheDB {
     }
 
 
-    async setWithTag(key: string, value: unknown, tags: string[], ttl?: number): Promise<void> {
+    async setWithTag(key: string, value: unknown, tags: readonly string[], ttl?: number): Promise<void> {
         await this.set(key, value, { ttl });
         for (const tag of tags) {
             const keys = this.tagStorage.get(tag) ?? new Set<string>();
@@ -208,6 +265,7 @@ class SmartCacheDB {
     }
 
     async deleteByTag(tag: string): Promise<void> {
+        this.assertOpen();
         const keys = this.tagStorage.get(tag);
         if (!keys) return;
 

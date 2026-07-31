@@ -23,6 +23,10 @@ Thank you for helping improve SmartCacheDB.
 The Redis integration suite is skipped when `REDIS_URL` is not set. Run it
 before submitting changes to Redis behavior; CI always runs it against Redis 7.
 
+For changes to the memory hot path, run `npm run benchmark:memory` and compare
+results on the same machine and Node.js version. Benchmarks are directional and
+must not be presented as cross-environment guarantees.
+
 ## Branch and commit conventions
 
 Use short branch names that describe the work:

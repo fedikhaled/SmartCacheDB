@@ -3,6 +3,7 @@ export type {
     CacheStats,
     DatabaseConfig,
     DatabaseConnection,
+    GetOrSetOptions,
     MemoryStorageOptions,
     SetOptions,
     SmartCacheOptions,
