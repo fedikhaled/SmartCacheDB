@@ -4,10 +4,29 @@
   "description": "High-Performance Adaptive Caching for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
-    "test": "jest --config=jest.config.js"
+    "typecheck": "tsc --noEmit",
+    "test": "jest --config=jest.config.js",
+    "test:coverage": "jest --config=jest.config.js --coverage",
+    "prepack": "npm run build"
   },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedikhaled/SmartCacheDB.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fedikhaled/SmartCacheDB/issues"
+  },
+  "homepage": "https://github.com/fedikhaled/SmartCacheDB#readme",
   "dependencies": {
     "lru-cache": "^10.4.3",
     "redis": "^4.7.0",
