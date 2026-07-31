@@ -1,189 +1,277 @@
-# 🚀 SmartCacheDB - High-Performance Adaptive Caching for Node.js  
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)  
+# SmartCacheDB
 
-**SmartCacheDB** is a high-performance caching system for Node.js that **dynamically optimizes cache expiration** based on access patterns.  
-It supports **in-memory storage (LRU)**, **Redis**, and **database caching**, reducing database load and improving performance.  
-Developers can now **choose storage types dynamically** for more flexibility!  
+[![CI](https://github.com/fedikhaled/SmartCacheDB/actions/workflows/ci.yml/badge.svg)](https://github.com/fedikhaled/SmartCacheDB/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/smartcachedb.svg)](https://www.npmjs.com/package/smartcachedb)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
----
+SmartCacheDB is a TypeScript caching library for Node.js. It provides a single
+API over in-memory LRU, Redis, and SQL-backed storage, with gzip serialization,
+TTL support, cache tags, batch operations, and optional invalidation events.
 
-## 📌 **Features**
-✅ **Optimized Cache Expiration** - No need to manually set TTL!  
-✅ **Supports Redis, In-Memory, & Database** - Choose storage dynamically!  
-✅ **Auto-Invalidation** - Cache updates automatically when data changes.  
-✅ **LRU Cache Support** - Uses Least Recently Used (LRU) caching.  
-✅ **Simple API** - Works as a drop-in replacement for Redis/Memcached.  
-✅ **WebSocket-Based Cache Invalidation** - Real-time cache updates when data changes.  
-✅ **Persistent Storage Support** - Keep cache even after server restarts.  
-✅ **Compression Support** - Reduce memory usage with Gzip compression.  
-✅ **Multi-Backend Support** - Use multiple storage backends together (e.g., Memory + Redis + Database).  
-✅ **Hybrid Caching** - Combine different cache strategies dynamically.  
-✅ **Multi-Key Operations** - Batch set, get, and delete for performance.  
-✅ **Cache Tags** - Group-based cache invalidation.  
-✅ **Auto Refresh** - Preload cache before expiration.  
-✅ **JSON & Buffer Storage** - Store structured and binary data efficiently.  
-✅ **Efficient Testing Suite** - Ensures reliability with Jest tests.  
+## Requirements
 
----
+- Node.js 18 or newer
+- Redis 6 or newer when using Redis storage
+- A compatible SQL connection and cache table when using database storage
 
-## 📦 **Installation**
-Install the package using `npm`:
+## Installation
+
 ```sh
 npm install smartcachedb
 ```
-or using `yarn`:
-```sh
-yarn add smartcachedb
+
+## Quick start
+
+Use memory-only storage when no external service is required:
+
+```ts
+import SmartCacheDB from 'smartcachedb';
+
+const cache = new SmartCacheDB({
+  storage: ['memory'],
+  defaultTtl: 300,
+  memory: { max: 500 }
+});
+
+await cache.set('user:42', { name: 'Ada' }, { ttl: 300 });
+const user = await cache.get<{ name: string }>('user:42');
+
+await cache.close();
 ```
 
-### **Installing Redis (Required for Redis Mode)**
-#### **🔹 Windows**
-```sh
-wsl --install
-sudo apt update
-sudo apt install redis-server
-sudo service redis-server start
-redis-cli ping
-```
+`new SmartCacheDB()` also defaults to memory-only storage. External backends
+must be selected explicitly.
 
-#### **🔹 Linux (Ubuntu/Debian)**
-```sh
-sudo apt update
-sudo apt install redis-server -y
-sudo systemctl start redis
-sudo systemctl enable redis
-redis-cli ping
-```
+TTL values are expressed in seconds. Values are JSON-serialized and gzip
+compressed before being written to a backend.
 
-#### **🔹 macOS**
-```sh
-brew install redis
-brew services start redis
-redis-cli ping
-```
+## Storage configuration
 
-#### **🔹 Docker (Cross-Platform Solution)**
-```sh
-docker run --name redis -d -p 6379:6379 redis
-```
+### Memory
 
----
-
-## 🚀 **Usage Examples**
-
-### **1️⃣ Basic Set & Get Example**
-```typescript
-await cache.set("user:1", { name: "Alice" });
-const user = await cache.get("user:1");
-console.log(user);
-```
-
-### **2️⃣ Choosing Storage Dynamically**
-```typescript
-const cacheMemory = new SmartCacheDB(['memory']);
-const cacheRedis = new SmartCacheDB(['redis'], { host: 'localhost', port: 6379 });
-const cacheHybrid = new SmartCacheDB(['memory', 'redis', 'database']);
-```
-
-### **3️⃣ Multi-Key Operations**
-```typescript
-await cache.setMany({ "user:1": "Alice", "user:2": "Bob" });
-const users = await cache.getMany(["user:1", "user:2"]);
-console.log(users);
-await cache.deleteMany(["user:1", "user:2"]);
-```
-
-### **4️⃣ Cache Tags (Group-based invalidation)**
-```typescript
-await cache.setWithTag("post:100", { title: "Hello World" }, ["posts"]);
-await cache.setWithTag("post:101", { title: "Another Post" }, ["posts"]);
-await cache.deleteByTag("posts");
-```
-
-### **5️⃣ Auto-Refreshing Cache**
-```typescript
-await cache.setWithAutoRefresh("stock:price", 100, 30, async () => {
-    return Math.random() * 100;
+```ts
+const cache = new SmartCacheDB({
+  storage: ['memory'],
+  memory: { max: 1_000 }
 });
 ```
 
-### **6️⃣ JSON & Buffer Storage**
-```typescript
-await cache.setJSON("config", { theme: "dark", layout: "grid" });
-const config = await cache.getJSON("config");
-console.log(config);
-await cache.setBuffer("file:data", Buffer.from("Hello, world!"));
-const file = await cache.getBuffer("file:data");
-console.log(file.toString());
-```
+Memory storage uses an LRU cache with a maximum of 500 entries. It is local to
+the Node.js process and is cleared when the process exits.
 
-### **7️⃣ Compression Support**
-```typescript
-const cache = new SmartCacheDB(['memory']);
-await cache.set('analytics:data', { users: 10000, traffic: 'high' }, { compress: true });
-const analytics = await cache.get('analytics:data');
-console.log(analytics);
-```
+### Redis
 
-### **8️⃣ WebSocket-Based Cache Invalidation**
-```typescript
-import WebSocket from 'ws';
-const cache = new SmartCacheDB(['memory', 'redis'], { enableWebSocket: true });
-await cache.set('live:data', { status: 'active' });
-const ws = new WebSocket('ws://localhost:8080');
-ws.on('message', (data) => console.log("Cache invalidation message received:", data));
-await cache.delete('live:data');
-```
+Redis options follow the [`redis`](https://www.npmjs.com/package/redis) client
+configuration format:
 
-### **9️⃣ API Caching with Express.js**
-```typescript
-import express from 'express';
-const app = express();
-const cache = new SmartCacheDB(['memory', 'redis'], { redisConfig: { host: 'localhost', port: 6379 } });
-app.get('/data', async (req, res) => {
-    const cachedData = await cache.get('api:data');
-    if (cachedData) return res.json({ source: 'cache', data: cachedData });
-    const freshData = { message: 'Fetched from API', timestamp: Date.now() };
-    await cache.set('api:data', freshData, { ttl: 600 });
-    res.json({ source: 'API', data: freshData });
+```ts
+const cache = new SmartCacheDB({
+  storage: ['redis'],
+  redis: {
+    url: 'redis://localhost:6379'
+  }
 });
-app.listen(3000, () => console.log('Server running on port 3000'));
+
+await cache.set('session:123', { active: true }, { ttl: 60 });
+await cache.close();
 ```
 
----
+Socket configuration is also supported:
 
-## **🛠️ API Methods**
-| Method | Description |
-|--------|------------|
-| `set(key, value, ttl?)` | Stores a value with optional TTL |
-| `get(key)` | Retrieves a value |
-| `delete(key)` | Deletes a value |
-| `clear()` | Clears the entire cache |
-| `setMany(keysValues, ttl?)` | Stores multiple key-value pairs with optional TTL |
-| `getMany(keys)` | Retrieves multiple values |
-| `deleteMany(keys)` | Deletes multiple keys |
-| `setWithTag(key, value, tags, ttl?)` | Stores a value and assigns tags for group invalidation |
-| `deleteByTag(tag)` | Deletes all cache entries associated with a specific tag |
-| `setWithAutoRefresh(key, value, ttl, refreshCallback)` | Stores a value and auto-refreshes before expiration |
-| `setJSON(key, json, ttl?)` | Stores a JSON object in cache |
-| `getJSON(key)` | Retrieves and parses a stored JSON object |
-| `setBuffer(key, buffer, ttl?)` | Stores binary data in cache |
-| `getBuffer(key)` | Retrieves binary data from cache |
+```ts
+const cache = new SmartCacheDB({
+  storage: ['redis'],
+  redis: {
+    socket: {
+      host: 'localhost',
+      port: 6379
+    }
+  }
+});
+```
 
----
+### Multiple backends
 
+```ts
+const cache = new SmartCacheDB({
+  storage: ['memory', 'redis'],
+  memory: { max: 2_000 },
+  redis: { url: process.env.REDIS_URL }
+});
+```
 
-## 📜 **License**
-This project is **open-source** and available under the **MIT License**.
+Writes and deletions are applied to every configured backend. Reads check
+backends in this order: memory, Redis, then database. A backend error rejects
+the operation; SmartCacheDB does not silently hide infrastructure failures.
 
----
+### Database
 
-## 📞 **Contact**
-For questions or feature requests, feel free to reach out:
-- **GitHub Issues:** [Open an issue](https://github.com/fedikhaled/SmartCacheDB/issues)
-- **Email:** fedikhaled01@gmail.com 
+Database mode expects an asynchronous `query` method and a table compatible
+with the following MySQL-style schema:
 
----
+```sql
+CREATE TABLE cache (
+  `key` VARCHAR(255) PRIMARY KEY,
+  `value` LONGTEXT NOT NULL
+);
+```
 
-### 🚀 **Star this project if you like it!** ⭐
+```ts
+const cache = new SmartCacheDB({
+  storage: ['database'],
+  database: { connection: databaseConnection }
+});
+```
 
+The current database adapter uses `?` placeholders and MySQL's
+`ON DUPLICATE KEY UPDATE` syntax. Database-backed entries do not currently
+enforce TTL expiration.
+
+## API
+
+### Basic operations
+
+```ts
+await cache.set('key', value, { ttl: 300 });
+const value = await cache.get<MyType>('key');
+await cache.delete('key');
+await cache.clear();
+```
+
+`clear()` clears every configured backend. Treat it as an administrative
+operation, especially with Redis, where it calls `FLUSHDB`.
+
+### Cache-aside loading
+
+Use `getOrSet` to read a cached value or load and cache it on a miss:
+
+```ts
+const user = await cache.getOrSet(
+  'user:42',
+  () => database.users.findById(42),
+  { ttl: 300, tags: ['users'] }
+);
+```
+
+Concurrent misses for the same key share one in-flight loader promise within
+the process. Loader errors are returned to every waiting caller and are not
+cached, so a later request can retry. A `null` loader result is returned but is
+not cached.
+
+### Batch operations
+
+```ts
+await cache.setMany({ first: 1, second: 2 }, 300);
+const values = await cache.getMany<number>(['first', 'second']);
+await cache.deleteMany(['first', 'second']);
+```
+
+Batch operations execute their per-key work concurrently.
+
+### Tags
+
+```ts
+await cache.setWithTag('post:1', post, ['posts', 'featured'], 300);
+await cache.deleteByTag('posts');
+```
+
+Tag metadata is process-local. It is not shared between application instances
+and does not survive restarts.
+
+### Refresh before expiration
+
+```ts
+await cache.setWithAutoRefresh('price', initialPrice, 60, async () => {
+  return fetchCurrentPrice();
+}, error => {
+  logger.error({ error }, 'Cache refresh failed');
+});
+```
+
+The callback runs once at 90% of the TTL and replaces the stored value. The
+optional error callback receives refresh or write failures. Calling `close()`
+cancels refresh callbacks that have not started.
+
+### JSON and Buffer helpers
+
+```ts
+await cache.setJSON('settings', { theme: 'dark' }, 300);
+const settings = await cache.getJSON<{ theme: string }>('settings');
+
+await cache.setBuffer('document', Buffer.from('content'), 300);
+const document = await cache.getBuffer('document');
+```
+
+### Statistics
+
+```ts
+const { cacheHits, cacheMisses } = cache.stats();
+```
+
+Statistics are process-local and cover calls made through that cache instance.
+
+### Optional WebSocket invalidation events
+
+```ts
+const cache = new SmartCacheDB({
+  storage: ['memory'],
+  websocket: {
+    enabled: true,
+    port: 8080
+  }
+});
+```
+
+When enabled, deleting a key broadcasts an `{ action: "invalidate", key }`
+message to clients connected to that instance. The package does not
+automatically connect application instances or consume invalidation events.
+
+## Lifecycle
+
+Always close cache instances during application shutdown:
+
+```ts
+process.once('SIGTERM', async () => {
+  await cache.close();
+});
+```
+
+`close()` cancels pending refresh timers, closes the Redis connection, and
+stops the optional WebSocket server. It is safe to call more than once. A
+closed instance cannot be reused; create a new instance instead.
+
+## Legacy constructor compatibility
+
+The positional constructor remains supported for existing applications:
+
+```ts
+const cache = new SmartCacheDB(
+  ['memory', 'redis'],
+  { url: 'redis://localhost:6379' },
+  { connection: databaseConnection }
+);
+```
+
+New code should use the options-object form because it keeps backend settings
+separate and supports memory capacity and default TTL configuration.
+
+## Development
+
+```sh
+npm ci
+npm run build
+npm run typecheck
+npm test -- --runInBand
+```
+
+Redis integration tests require a running Redis instance:
+
+```sh
+REDIS_URL=redis://localhost:6379 npm run test:integration
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete workflow.
+
+## License
+
+[MIT](LICENSE) © Fedi Khaled

@@ -1,25 +1,61 @@
 {
   "name": "smartcachedb",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "High-Performance Adaptive Caching for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "tsc",
-    "test": "jest --config=jest.config.js"
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --config=jest.config.js",
+    "test:integration": "jest --config=jest.integration.config.js --runInBand",
+    "test:coverage": "jest --config=jest.config.js --coverage",
+    "benchmark:memory": "npm run build && node benchmarks/memory.js",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedikhaled/SmartCacheDB.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fedikhaled/SmartCacheDB/issues"
+  },
+  "homepage": "https://github.com/fedikhaled/SmartCacheDB#readme",
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
-    "lru-cache": "^10.4.3",
+    "lru-cache": "^11.5.2",
     "redis": "^4.7.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.14",
-    "@types/node": "^20.17.19",
-    "jest": "^29.7.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.1.2",
+    "@types/ws": "^8.18.1",
+    "jest": "^30.4.2",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.2.2"
+    "typescript": "^7.0.2"
   },
   "keywords": [
     "cache",

@@ -1,46 +1,26 @@
 import { LRUCache } from 'lru-cache';
+import type { MemoryStorageOptions } from '../types';
 
 export class MemoryStorage {
-    private cache: LRUCache<string, any>;
+    private cache: LRUCache<string, string>;
 
-    constructor() {
-        this.cache = new LRUCache({ max: 500 });
+    constructor(options: MemoryStorageOptions = {}) {
+        this.cache = new LRUCache({ max: options.max ?? 500 });
     }
 
-    set(key: string, value: any, ttl: number) {
-        this.cache.set(key, value, { ttl });
+    set(key: string, value: string, ttl: number): void {
+        this.cache.set(key, value, { ttl: ttl * 1000 });
     }
 
-    get(key: string) {
+    get(key: string): string | undefined {
         return this.cache.get(key);
     }
 
-    delete(key: string) {
+    delete(key: string): void {
         this.cache.delete(key);
     }
 
-    clear() {
+    clear(): void {
         this.cache.clear();
-    }
-
-   
-    setMany(keysValues: Record<string, any>, ttl?: number) {
-        for (const key in keysValues) {
-            this.set(key, keysValues[key], ttl);
-        }
-    }
-
-    getMany(keys: string[]): Record<string, any> {
-        const results: Record<string, any> = {};
-        for (const key of keys) {
-            results[key] = this.get(key);
-        }
-        return results;
-    }
-
-    deleteMany(keys: string[]) {
-        for (const key of keys) {
-            this.delete(key);
-        }
     }
 }
