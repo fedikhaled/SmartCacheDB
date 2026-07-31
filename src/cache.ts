@@ -25,6 +25,7 @@ class SmartCacheDB {
     private monitor: CacheMonitor;
     private tagStorage = new Map<string, Set<string>>();
     private refreshTimers = new Set<NodeJS.Timeout>();
+    private closePromise?: Promise<void>;
 
     constructor();
     constructor(options: SmartCacheOptions);
@@ -93,6 +94,7 @@ class SmartCacheDB {
     }
 
     async set(key: string, value: unknown, options: SetOptions = {}): Promise<void> {
+        this.assertOpen();
         const ttl = options.ttl ?? this.defaultTtl;
         this.validateTtl(ttl);
 
@@ -112,7 +114,14 @@ class SmartCacheDB {
         }
     }
 
+    private assertOpen(): void {
+        if (this.closePromise) {
+            throw new Error('SmartCacheDB instance is closed');
+        }
+    }
+
     async get<T = unknown>(key: string): Promise<T | null> {
+        this.assertOpen();
         const value =
             (this.memoryStorage && this.memoryStorage.get(key)) ||
             (this.redisStorage && (await this.redisStorage.get(key))) ||
@@ -128,6 +137,7 @@ class SmartCacheDB {
     }
 
     async delete(key: string): Promise<void> {
+        this.assertOpen();
         const deletions: Promise<unknown>[] = [];
 
         if (this.memoryStorage) this.memoryStorage.delete(key);
@@ -145,6 +155,7 @@ class SmartCacheDB {
     }
 
     async clear(): Promise<void> {
+        this.assertOpen();
         const clears: Promise<unknown>[] = [];
 
         if (this.memoryStorage) this.memoryStorage.clear();
@@ -159,11 +170,20 @@ class SmartCacheDB {
         return this.monitor.stats();
     }
 
-    async close(): Promise<void> {
+    close(): Promise<void> {
+        if (!this.closePromise) {
+            this.closePromise = this.performClose();
+        }
+        return this.closePromise;
+    }
+
+    private async performClose(): Promise<void> {
         for (const timer of this.refreshTimers) {
             clearTimeout(timer);
         }
         this.refreshTimers.clear();
+        this.memoryStorage?.clear();
+        this.tagStorage.clear();
 
         if (this.redisStorage) {
             await this.redisStorage.close();
@@ -208,6 +228,7 @@ class SmartCacheDB {
     }
 
     async deleteByTag(tag: string): Promise<void> {
+        this.assertOpen();
         const keys = this.tagStorage.get(tag);
         if (!keys) return;
 

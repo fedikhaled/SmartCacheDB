@@ -39,5 +39,7 @@ follows [Semantic Versioning](https://semver.org/).
 - Redis tests no longer pass accidentally through the memory backend.
 - Cache tag metadata is cleaned after individual deletes and clears.
 - Pending auto-refresh timers are canceled during shutdown.
+- Closed cache instances can no longer reconnect or accept new operations, and
+  concurrent `close()` calls share the same completion promise.
 - Non-JSON-serializable values fail with a clear `TypeError`.
 - Stale build artifacts are removed before packaging.

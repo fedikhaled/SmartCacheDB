@@ -208,8 +208,22 @@ describe('SmartCacheDB memory storage', () => {
     });
 
     test('can be closed more than once', async () => {
+        const firstClose = cache.close();
+        const secondClose = cache.close();
+
+        expect(secondClose).toBe(firstClose);
+        await expect(firstClose).resolves.toBeUndefined();
+    });
+
+    test.each([
+        ['set', (closedCache: SmartCacheDB) => closedCache.set('key', 'value')],
+        ['get', (closedCache: SmartCacheDB) => closedCache.get('key')],
+        ['delete', (closedCache: SmartCacheDB) => closedCache.delete('key')],
+        ['clear', (closedCache: SmartCacheDB) => closedCache.clear()],
+        ['deleteByTag', (closedCache: SmartCacheDB) => closedCache.deleteByTag('tag')]
+    ])('rejects %s after close', async (_method, operation) => {
         await cache.close();
 
-        await expect(cache.close()).resolves.toBeUndefined();
+        await expect(operation(cache)).rejects.toThrow('SmartCacheDB instance is closed');
     });
 });

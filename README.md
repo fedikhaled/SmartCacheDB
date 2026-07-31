@@ -220,7 +220,8 @@ process.once('SIGTERM', async () => {
 ```
 
 `close()` cancels pending refresh timers, closes the Redis connection, and
-stops the optional WebSocket server.
+stops the optional WebSocket server. It is safe to call more than once. A
+closed instance cannot be reused; create a new instance instead.
 
 ## Legacy constructor compatibility
 
