@@ -8,12 +8,16 @@ import WebSocket from 'ws';
 import type {
     CacheStats,
     DatabaseConfig,
+    MemoryStorageOptions,
     SetOptions,
+    SmartCacheOptions,
     SmartCacheRedisConfig,
     StorageType
 } from './types';
 
 class SmartCacheDB {
+    private storageType: readonly StorageType[];
+    private defaultTtl: number;
     private memoryStorage?: MemoryStorage;
     private redisStorage?: RedisStorage;
     private databaseStorage?: DatabaseStorage;
@@ -22,17 +26,38 @@ class SmartCacheDB {
     private tagStorage = new Map<string, Set<string>>();
     private refreshTimers = new Set<NodeJS.Timeout>();
 
+    constructor();
+    constructor(options: SmartCacheOptions);
     constructor(
-        private storageType: readonly StorageType[] = ['memory'],
-        redisConfig: SmartCacheRedisConfig = {},
-        dbConfig: DatabaseConfig = {}
+        storageType: readonly StorageType[],
+        redisConfig?: SmartCacheRedisConfig,
+        dbConfig?: DatabaseConfig
+    );
+    constructor(
+        storageOrOptions: readonly StorageType[] | SmartCacheOptions = ['memory'],
+        legacyRedisConfig: SmartCacheRedisConfig = {},
+        legacyDbConfig: DatabaseConfig = {}
     ) {
+        const isLegacyConfiguration = Array.isArray(storageOrOptions);
+        const options = isLegacyConfiguration
+            ? undefined
+            : storageOrOptions as SmartCacheOptions;
+        this.storageType = isLegacyConfiguration
+            ? storageOrOptions as readonly StorageType[]
+            : options?.storage ?? ['memory'];
+        this.defaultTtl = options?.defaultTtl ?? 300;
+
+        const redisConfig = options?.redis ?? legacyRedisConfig;
+        const dbConfig = options?.database ?? legacyDbConfig;
+        const memoryConfig: MemoryStorageOptions = options?.memory ?? {};
         const {
-            enableWebSocket = false,
-            webSocketPort = 0,
+            enableWebSocket: legacyWebSocketEnabled = false,
+            webSocketPort: legacyWebSocketPort = 0,
             redisConfig: nestedRedisConfig,
             ...directRedisConfig
-        } = redisConfig;
+        } = redisConfig as SmartCacheRedisConfig;
+        const enableWebSocket = options?.websocket?.enabled ?? legacyWebSocketEnabled;
+        const webSocketPort = options?.websocket?.port ?? legacyWebSocketPort;
 
         if (this.storageType.length === 0) {
             throw new TypeError('At least one storage backend is required');
@@ -42,12 +67,17 @@ class SmartCacheDB {
         if (unsupportedStorage) {
             throw new TypeError(`Unsupported storage backend: ${unsupportedStorage}`);
         }
+        this.validateTtl(this.defaultTtl);
+        const memoryMax = memoryConfig.max ?? 500;
+        if (!Number.isInteger(memoryMax) || memoryMax <= 0) {
+            throw new RangeError('Memory max must be a positive integer');
+        }
         if (enableWebSocket && (!Number.isInteger(webSocketPort) || webSocketPort < 0 || webSocketPort > 65535)) {
             throw new RangeError('WebSocket port must be an integer between 0 and 65535');
         }
 
         if (this.storageType.includes('memory')) {
-            this.memoryStorage = new MemoryStorage();
+            this.memoryStorage = new MemoryStorage(memoryConfig);
         }
         if (this.storageType.includes('redis')) {
             this.redisStorage = new RedisStorage(nestedRedisConfig ?? directRedisConfig);
@@ -63,10 +93,8 @@ class SmartCacheDB {
     }
 
     async set(key: string, value: unknown, options: SetOptions = {}): Promise<void> {
-        const ttl = options.ttl ?? 300;
-        if (!Number.isFinite(ttl) || ttl <= 0) {
-            throw new RangeError('TTL must be a positive number of seconds');
-        }
+        const ttl = options.ttl ?? this.defaultTtl;
+        this.validateTtl(ttl);
 
         const compressedValue = compress(value);
         const writes: Promise<unknown>[] = [];
@@ -76,6 +104,12 @@ class SmartCacheDB {
         if (this.databaseStorage) writes.push(this.databaseStorage.set(key, compressedValue));
 
         await Promise.all(writes);
+    }
+
+    private validateTtl(ttl: number): void {
+        if (!Number.isFinite(ttl) || ttl <= 0) {
+            throw new RangeError('TTL must be a positive number of seconds');
+        }
     }
 
     async get<T = unknown>(key: string): Promise<T | null> {

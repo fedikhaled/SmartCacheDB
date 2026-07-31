@@ -27,6 +27,31 @@ describe('SmartCacheDB memory storage', () => {
         await expect(cache.get('default')).resolves.toBe('memory');
     });
 
+    test('accepts the typed options-object configuration', async () => {
+        await cache.close();
+        cache = new SmartCacheDB({
+            storage: ['memory'],
+            defaultTtl: 0.01,
+            memory: { max: 10 }
+        });
+
+        await cache.set('short-lived', 'value');
+        await new Promise(resolve => setTimeout(resolve, 20));
+
+        await expect(cache.get('short-lived')).resolves.toBeNull();
+    });
+
+    test('honors the configured memory capacity', async () => {
+        await cache.close();
+        cache = new SmartCacheDB({ memory: { max: 1 } });
+
+        await cache.set('first', 1);
+        await cache.set('second', 2);
+
+        await expect(cache.get('first')).resolves.toBeNull();
+        await expect(cache.get<number>('second')).resolves.toBe(2);
+    });
+
     test('returns null for missing keys', async () => {
         await expect(cache.get('missing')).resolves.toBeNull();
     });
@@ -149,6 +174,18 @@ describe('SmartCacheDB memory storage', () => {
         await cache.close();
 
         expect(() => new SmartCacheDB([])).toThrow(TypeError);
+    });
+
+    test.each([
+        [{ defaultTtl: 0 }, 'TTL must be a positive number of seconds'],
+        [{ defaultTtl: Number.NaN }, 'TTL must be a positive number of seconds'],
+        [{ memory: { max: 0 } }, 'Memory max must be a positive integer'],
+        [{ memory: { max: 1.5 } }, 'Memory max must be a positive integer'],
+        [{ websocket: { enabled: true, port: 70000 } }, 'WebSocket port must be an integer between 0 and 65535']
+    ])('rejects invalid options %p', async (options, message) => {
+        await cache.close();
+
+        expect(() => new SmartCacheDB(options)).toThrow(message as string);
     });
 
     test('rejects unsupported storage backends at runtime', async () => {

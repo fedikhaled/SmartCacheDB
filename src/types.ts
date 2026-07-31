@@ -20,6 +20,17 @@ export interface DatabaseConfig {
     connection?: DatabaseConnection;
 }
 
+export interface MemoryStorageOptions {
+    /** Maximum number of entries retained by the in-memory LRU cache. */
+    max?: number;
+}
+
+export interface WebSocketOptions {
+    enabled?: boolean;
+    /** A value of 0 asks the operating system for a free port. */
+    port?: number;
+}
+
 export type SmartCacheRedisConfig = RedisClientOptions & {
     /** Start the optional invalidation WebSocket server. */
     enableWebSocket?: boolean;
@@ -28,3 +39,14 @@ export type SmartCacheRedisConfig = RedisClientOptions & {
     /** Backward-compatible nested Redis client configuration. */
     redisConfig?: RedisClientOptions;
 };
+
+export interface SmartCacheOptions {
+    /** Backends used for writes and ordered fallback reads. */
+    storage?: readonly StorageType[];
+    /** Default TTL in seconds. */
+    defaultTtl?: number;
+    memory?: MemoryStorageOptions;
+    redis?: RedisClientOptions;
+    database?: DatabaseConfig;
+    websocket?: WebSocketOptions;
+}

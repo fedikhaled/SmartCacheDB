@@ -3,8 +3,11 @@ export type {
     CacheStats,
     DatabaseConfig,
     DatabaseConnection,
+    MemoryStorageOptions,
     SetOptions,
+    SmartCacheOptions,
     SmartCacheRedisConfig,
-    StorageType
+    StorageType,
+    WebSocketOptions
 } from './types';
 export default SmartCacheDB;
