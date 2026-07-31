@@ -40,6 +40,9 @@
     "url": "https://github.com/fedikhaled/SmartCacheDB/issues"
   },
   "homepage": "https://github.com/fedikhaled/SmartCacheDB#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "lru-cache": "^10.4.3",
     "redis": "^4.7.0",

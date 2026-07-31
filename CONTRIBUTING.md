@@ -55,3 +55,10 @@ versioning when preparing a release.
 
 Do not commit credentials, local environment files, generated `dist` output,
 or unpublished package archives.
+
+## Releases
+
+Publishing uses npm Trusted Publishing from `.github/workflows/publish.yml`.
+The workflow is triggered by a version tag such as `v0.2.0`, verifies that the
+tag matches `package.json`, reruns the release checks, and publishes without a
+long-lived npm token. Do not run the workflow from an unreviewed commit.

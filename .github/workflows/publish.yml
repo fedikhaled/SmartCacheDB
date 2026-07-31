@@ -1,0 +1,43 @@
+name: Publish Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Type-check source
+        run: npm run typecheck
+
+      - name: Run tests with coverage thresholds
+        run: npm run test:coverage -- --runInBand
+
+      - name: Verify release tag matches package version
+        run: test "${GITHUB_REF_NAME}" = "v$(node -p \"require('./package.json').version\")"
+
+      - name: Publish package
+        run: npm publish --access public
