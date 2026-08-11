@@ -44,7 +44,7 @@
     "access": "public"
   },
   "dependencies": {
-    "lru-cache": "10.4.3",
+    "lru-cache": "11.5.2",
     "redis": "^4.7.0",
     "ws": "^8.18.0"
   },
