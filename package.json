@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "lru-cache": "10.4.3",
-    "redis": "^4.7.0",
+    "redis": "^6.2.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
